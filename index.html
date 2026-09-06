@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>Personal Finance Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="brand-mark">₹</div><div><strong>Finance</strong><span>Personal Tracker</span></div></div>
+    <nav>
+      <button class="nav active" data-page="dashboard">⌂ <span>Dashboard</span></button>
+      <button class="nav" data-page="income">＋ <span>Income</span></button>
+      <button class="nav" data-page="expenses">− <span>Expenses</span></button>
+      <button class="nav" data-page="banks">🏦 <span>Bank Accounts</span></button>
+      <button class="nav" data-page="assets">◆ <span>Assets</span></button>
+      <button class="nav" data-page="investments">📈 <span>Investments</span></button>
+      <button class="nav" data-page="cards">💳 <span>Credit Cards</span></button>
+      <button class="nav" data-page="loans">🏠 <span>Loans & EMIs</span></button>
+      <button class="nav" data-page="bills">⚡ <span>Bills</span></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="refresh-btn" onclick="loadAllData()">↻ Refresh Data</button>
+      <small>Google Sheets backend</small>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="menu" onclick="toggleSidebar()">☰</button>
+      <div><h1 id="pageTitle">Dashboard</h1><p id="lastUpdated">Loading your finances…</p></div>
+      <button class="header-refresh" onclick="loadAllData()">↻ Refresh</button>
+    </header>
+
+    <div id="loading" class="loading"><div class="spinner"></div><p>Loading data from Google Sheets…</p></div>
+    <div id="errorBox" class="error hidden"></div>
+
+    <section id="app" class="content hidden">
+      <div id="dashboardPage" class="page"></div>
+      <div id="incomePage" class="page hidden"></div>
+      <div id="expensesPage" class="page hidden"></div>
+      <div id="banksPage" class="page hidden"></div>
+      <div id="assetsPage" class="page hidden"></div>
+      <div id="investmentsPage" class="page hidden"></div>
+      <div id="cardsPage" class="page hidden"></div>
+      <div id="loansPage" class="page hidden"></div>
+      <div id="billsPage" class="page hidden"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
