@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>My Finance — Personal Finance Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">₹</div>
+      <div><strong>My Finance</strong><span>Personal tracker</span></div>
+    </div>
+    <nav>
+      <button class="nav-item active" data-page="dashboard">⌂ <span>Dashboard</span></button>
+      <button class="nav-item" data-page="income">＋ <span>Add Income</span></button>
+      <button class="nav-item" data-page="expenses">− <span>Add Expense</span></button>
+      <button class="nav-item" data-page="banks">▣ <span>Bank Accounts</span></button>
+      <button class="nav-item" data-page="assets">◆ <span>Assets</span></button>
+      <button class="nav-item" data-page="investments">◈ <span>Investments</span></button>
+      <button class="nav-item" data-page="cards">▤ <span>Credit Cards</span></button>
+      <button class="nav-item" data-page="loans">▥ <span>Loans & EMIs</span></button>
+      <button class="nav-item" data-page="bills">◷ <span>Bills</span></button>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="status-dot"></span> Google Sheets connected
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="mobile-menu" id="mobileMenu">☰</button>
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <p id="pageSubtitle">Your complete financial picture</p>
+      </div>
+      <button class="refresh-btn" id="refreshBtn">↻ <span>Refresh</span></button>
+    </header>
+
+    <section id="page-dashboard" class="page active">
+      <div class="hero">
+        <div>
+          <span class="eyebrow">NET WORTH</span>
+          <h2 id="netWorth">₹0</h2>
+          <p id="netWorthText">Assets minus liabilities</p>
+        </div>
+        <div class="hero-icon">₹</div>
+      </div>
+
+      <div class="cards-grid">
+        <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-value" id="totalAssets">₹0</div><div class="stat-meta">Cash + investments + assets</div></div>
+        <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-value" id="totalLiabilities">₹0</div><div class="stat-meta">Loans + cards + liabilities</div></div>
+        <div class="stat-card"><div class="stat-label">Monthly Income</div><div class="stat-value" id="totalIncome">₹0</div><div class="stat-meta">Recorded income</div></div>
+        <div class="stat-card"><div class="stat-label">Monthly Expenses</div><div class="stat-value" id="totalExpenses">₹0</div><div class="stat-meta">Recorded expenses</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><div><h3>Money Overview</h3><p>Current allocation</p></div></div>
+          <div class="chart-wrap"><canvas id="overviewChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Cash Flow</h3><p>Income vs expenses</p></div></div>
+          <div class="cashflow">
+            <div><span>Income</span><strong id="cashIncome">₹0</strong><div class="bar"><i id="incomeBar"></i></div></div>
+            <div><span>Expenses</span><strong id="cashExpenses">₹0</strong><div class="bar"><i id="expenseBar"></i></div></div>
+            <div class="flow-result"><span>Net cash flow</span><strong id="netCashFlow">₹0</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><div><h3>Bank Balances</h3><p>Live calculated balances</p></div><button class="text-btn" data-page-jump="banks">View all</button></div>
+          <div id="bankList" class="list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Upcoming Bills</h3><p>Keep your payments on time</p></div><button class="text-btn" data-page-jump="bills">Manage</button></div>
+          <div id="billList" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-income" class="page">
+      <div class="section-heading"><div><h2>Add Income</h2><p>Record money received. Bank or cash balances update automatically.</p></div></div>
+      <form class="form-card" id="incomeForm">
+        <div class="form-grid">
+          <label>Date<input type="date" name="date" required></label>
+          <label>Income Source<input name="income_source" placeholder="Salary, business, freelance..." required></label>
+          <label>Category<input name="category" placeholder="Salary / Business / Other"></label>
+          <label>Amount (₹)<input type="number" name="amount" min="0" step="0.01" required></label>
+          <label>Received Through<select name="mode"><option value="Cash">Cash</option><option value="Bank">Bank</option></select></label>
+          <label>Bank / Account<input name="account" placeholder="Required for bank receipt"></label>
+          <label class="full">Description<textarea name="description" rows="3"></textarea></label>
+        </div>
+        <button class="primary" type="submit">Add Income</button>
+        <div class="form-message" id="incomeMsg"></div>
+      </form>
+    </section>
+
+    <section id="page-expenses" class="page">
+      <div class="section-heading"><div><h2>Add Expense</h2><p>Record spending from cash or any bank account.</p></div></div>
+      <form class="form-card" id="expenseForm">
+        <div class="form-grid">
+          <label>Date<input type="date" name="date" required></label>
+          <label>Category<input name="category" placeholder="Food, rent, medicine..." required></label>
+          <label>Amount (₹)<input type="number" name="amount" min="0" step="0.01" required></label>
+          <label>Paid Through<select name="mode"><option value="Cash">Cash</option><option value="Bank">Bank</option></select></label>
+          <label>Bank / Account<input name="account" placeholder="Required for bank payment"></label>
+          <label class="full">Description<textarea name="description" rows="3"></textarea></label>
+        </div>
+        <button class="primary" type="submit">Add Expense</button>
+        <div class="form-message" id="expenseMsg"></div>
+      </form>
+    </section>
+
+    <section id="page-banks" class="page">
+      <div class="section-heading"><div><h2>Bank Accounts</h2><p>Add multiple accounts and see calculated closing balances.</p></div></div>
+      <form class="form-card compact" id="bankForm">
+        <div class="form-grid">
+          <label>Bank Name<input name="bank_name" placeholder="SBI, HDFC..." required></label>
+          <label>Account Name<input name="account_name" placeholder="Savings / Main Account" required></label>
+          <label>Account Type<select name="account_type"><option>Bank</option><option>Cash</option></select></label>
+          <label>Opening Balance (₹)<input type="number" name="opening_balance" step="0.01" value="0"></label>
+          <label>Last 4 digits<input name="account_number_last4" maxlength="4" placeholder="1234"></label>
+        </div>
+        <button class="primary" type="submit">Add Account</button><div class="form-message" id="bankMsg"></div>
+      </form>
+      <div class="panel"><div class="panel-head"><div><h3>Accounts</h3><p>Automatically calculated from your entries</p></div></div><div id="banksTable" class="table-wrap"></div></div>
+    </section>
+
+    <section id="page-assets" class="page">
+      <div class="section-heading"><div><h2>Assets</h2><p>Track property, electronics, vehicles and other personal assets.</p></div></div>
+      <form class="form-card compact" id="assetForm">
+        <div class="form-grid">
+          <label>Asset Name<input name="asset_name" required></label>
+          <label>Asset Type<input name="asset_type" placeholder="Vehicle, property, electronics..."></label>
+          <label>Purchase Date<input type="date" name="purchase_date"></label>
+          <label>Purchase Value (₹)<input type="number" name="purchase_value" step="0.01"></label>
+          <label>Current Value (₹)<input type="number" name="current_value" step="0.01"></label>
+          <label>Notes<input name="notes"></label>
+        </div>
+        <button class="primary" type="submit">Add Asset</button><div class="form-message" id="assetMsg"></div>
+      </form>
+      <div class="panel"><div class="panel-head"><h3>Asset Register</h3></div><div id="assetsTable" class="table-wrap"></div></div>
+    </section>
+
+    <section id="page-investments" class="page">
+      <div class="section-heading"><div><h2>Investments</h2><p>Track PF, PPF, mutual funds and stocks from one place.</p></div></div>
+      <div class="investment-tabs">
+        <button class="tab active" data-invest="mf">Mutual Funds</button>
+        <button class="tab" data-invest="stocks">Stocks</button>
+        <button class="tab" data-invest="pf">PF</button>
+        <button class="tab" data-invest="ppf">PPF</button>
+      </div>
+      <div id="invest-mf" class="invest-pane active">
+        <form class="form-card compact" id="mfForm"><div class="form-grid">
+          <label>Date<input type="date" name="date" required></label><label>Fund Name<input name="investment_name" required></label>
+          <label>Transaction<select name="transaction_type"><option>BUY</option><option>SELL</option></select></label>
+          <label>Amount (₹)<input type="number" name="amount" step="0.01" required></label>
+          <label>Units<input type="number" name="units" step="0.000001"></label><label>NAV<input type="number" name="nav" step="0.0001"></label>
+          <label>Bank Account<input name="bank_account"></label>
+        </div><button class="primary" type="submit">Record Mutual Fund</button><div class="form-message" id="mfMsg"></div></form>
+        <div class="panel"><div class="panel-head"><h3>Mutual Fund Portfolio</h3></div><div id="mfTable" class="table-wrap"></div></div>
+      </div>
+      <div id="invest-stocks" class="invest-pane">
+        <form class="form-card compact" id="stockForm"><div class="form-grid">
+          <label>Date<input type="date" name="date" required></label><label>Stock Name<input name="stock_name" required></label>
+          <label>Transaction<select name="transaction_type"><option>BUY</option><option>SELL</option></select></label>
+          <label>Quantity<input type="number" name="quantity" step="0.000001" required></label>
+          <label>Price<input type="number" name="price" step="0.01"></label><label>Amount (₹)<input type="number" name="amount" step="0.01" required></label>
+          <label>Current Price<input type="number" name="current_price" step="0.01"></label><label>Bank Account<input name="bank_account"></label>
+        </div><button class="primary" type="submit">Record Stock</button><div class="form-message" id="stockMsg"></div></form>
+        <div class="panel"><div class="panel-head"><h3>Stock Portfolio</h3></div><div id="stockTable" class="table-wrap"></div></div>
+      </div>
+      <div id="invest-pf" class="invest-pane">
+        <form class="form-card compact" id="pfForm"><div class="form-grid">
+          <label>Date<input type="date" name="date" required></label><label>Transaction<select name="transaction_type"><option>CONTRIBUTION</option><option>WITHDRAWAL</option></select></label>
+          <label>Amount (₹)<input type="number" name="amount" step="0.01" required></label><label>Bank Account (withdrawal only)<input name="bank_account"></label>
+          <label class="full">Description<textarea name="description"></textarea></label>
+        </div><button class="primary" type="submit">Record PF</button><div class="form-message" id="pfMsg"></div></form>
+        <div class="balance-banner"><span>Current PF Balance</span><strong id="pfBalance">₹0</strong></div>
+      </div>
+      <div id="invest-ppf" class="invest-pane">
+        <form class="form-card compact" id="ppfForm"><div class="form-grid">
+          <label>Date<input type="date" name="date" required></label><label>Transaction<select name="transaction_type"><option>CONTRIBUTION</option><option>WITHDRAWAL</option></select></label>
+          <label>Amount (₹)<input type="number" name="amount" step="0.01" required></label><label>Bank Account<input name="bank_account"></label>
+          <label class="full">Description<textarea name="description"></textarea></label>
+        </div><button class="primary" type="submit">Record PPF</button><div class="form-message" id="ppfMsg"></div></form>
+        <div class="balance-banner"><span>Current PPF Balance</span><strong id="ppfBalance">₹0</strong></div>
+      </div>
+    </section>
+
+    <section id="page-cards" class="page">
+      <div class="section-heading"><div><h2>Credit Cards</h2><p>Track card usage, outstanding balance and payments.</p></div></div>
+      <form class="form-card compact" id="cardForm"><div class="form-grid">
+        <label>Card Name<input name="card_name" placeholder="My HDFC Card" required></label><label>Bank<input name="bank"></label>
+        <label>Last 4 digits<input name="card_last4" maxlength="4"></label><label>Credit Limit (₹)<input type="number" name="credit_limit" step="0.01"></label>
+        <label>Statement Date<input name="statement_date" placeholder="DD"></label><label>Payment Due Date<input name="payment_due_date" placeholder="DD"></label>
+        <label>Opening Outstanding (₹)<input type="number" name="opening_outstanding" step="0.01" value="0"></label>
+      </div><button class="primary" type="submit">Add Card</button><div class="form-message" id="cardMsg"></div></form>
+      <form class="form-card compact" id="ccTxnForm"><h3>Record Card Transaction</h3><div class="form-grid">
+        <label>Date<input type="date" name="date" required></label><label>Card<input name="card_name" required></label>
+        <label>Type<select name="transaction_type"><option>PURCHASE</option><option>PAYMENT</option></select></label><label>Amount (₹)<input type="number" name="amount" step="0.01" required></label>
+        <label>Merchant<input name="merchant"></label><label>Payment Account<input name="payment_account"></label>
+      </div><button class="primary" type="submit">Record Transaction</button><div class="form-message" id="ccTxnMsg"></div></form>
+      <div class="panel"><div class="panel-head"><h3>Card Summary</h3></div><div id="cardsTable" class="table-wrap"></div></div>
+    </section>
+
+    <section id="page-loans" class="page">
+      <div class="section-heading"><div><h2>Loans & EMIs</h2><p>Track loan balances and EMI payment dates.</p></div></div>
+      <form class="form-card compact" id="loanForm"><div class="form-grid">
+        <label>Loan Name<input name="loan_name" required></label><label>Lender<input name="lender"></label>
+        <label>Principal (₹)<input type="number" name="principal" step="0.01"></label><label>Interest Rate %<input type="number" name="interest_rate" step="0.01"></label>
+        <label>EMI Amount (₹)<input type="number" name="emi_amount" step="0.01"></label><label>Tenure (months)<input type="number" name="tenure_months"></label>
+        <label>Start Date<input type="date" name="start_date"></label><label>EMI Due Day<input type="number" name="emi_due_day" min="1" max="31"></label>
+        <label>Opening Outstanding (₹)<input type="number" name="outstanding" step="0.01"></label><label>Bank Account<input name="bank_account"></label>
+      </div><button class="primary" type="submit">Add Loan</button><div class="form-message" id="loanMsg"></div></form>
+      <form class="form-card compact" id="emiForm"><h3>Record EMI</h3><div class="form-grid">
+        <label>Loan Name<input name="loan_name" required></label><label>Due Date<input type="date" name="due_date" required></label>
+        <label>Amount (₹)<input type="number" name="amount" step="0.01" required></label><label>Payment Date<input type="date" name="payment_date"></label>
+        <label>Payment Account<input name="payment_account"></label><label>Status<select name="status"><option>PENDING</option><option>PAID</option></select></label>
+      </div><button class="primary" type="submit">Record EMI</button><div class="form-message" id="emiMsg"></div></form>
+      <div class="panel"><div class="panel-head"><h3>Loans</h3></div><div id="loansTable" class="table-wrap"></div></div>
+    </section>
+
+    <section id="page-bills" class="page">
+      <div class="section-heading"><div><h2>Bills & Reminders</h2><p>Electricity, Wi-Fi, mobile and other recurring payments.</p></div></div>
+      <form class="form-card compact" id="billForm"><div class="form-grid">
+        <label>Bill Name<input name="bill_name" placeholder="Electricity" required></label><label>Bill Type<input name="bill_type" placeholder="Electricity / Wi-Fi / Mobile"></label>
+        <label>Provider<input name="provider"></label><label>Amount (₹)<input type="number" name="amount" step="0.01" required></label>
+        <label>Due Date<input type="date" name="due_date" required></label><label>Frequency<select name="frequency"><option>MONTHLY</option><option>ONE-TIME</option><option>YEARLY</option></select></label>
+        <label>Payment Account<input name="payment_account"></label><label>Payment Date<input type="date" name="payment_date"></label>
+        <label>Status<select name="status"><option>PENDING</option><option>PAID</option></select></label>
+      </div><button class="primary" type="submit">Add Bill</button><div class="form-message" id="billMsg"></div></form>
+      <div class="panel"><div class="panel-head"><h3>Bill Register</h3></div><div id="billsTable" class="table-wrap"></div></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
