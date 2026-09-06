@@ -1,0 +1,77 @@
+const API_URL="https://script.google.com/macros/s/AKfycbzs8fORPzBKp8zX84kt_nHqLjyU8duD1BYLR630eLUbAZcsPPAEnnhvWH7jq0kg3Ply/exec";
+const state={income:[],expenses:[],accounts:[],assets:[],liabilities:[],pf:[],ppf:[],mf:[],stocks:[],cards:[],loans:[],bills:[]};
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(n)||0);
+const esc=s=>String(s??"").replace(/[&<>"']/g,x=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[x]));
+const dateText=v=>{if(!v)return"";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})};
+async function get(action){const r=await fetch(`${API_URL}?action=${encodeURIComponent(action)}`);if(!r.ok)throw Error(`Server ${r.status}`);return r.json()}
+async function post(data){const r=await fetch(API_URL,{method:"POST",body:JSON.stringify(data)});if(!r.ok)throw Error(`Server ${r.status}`);return r.json()}
+async function load(){try{
+ const map={income:"getIncome",expenses:"getExpenses",accounts:"getBankAccounts",assets:"getAssets",liabilities:"getLiabilities",pf:"getPF",ppf:"getPPF",mf:"getMutualFunds",stocks:"getStocks",cards:"getCreditCards",loans:"getLoans",bills:"getBills"};
+ await Promise.all(Object.entries(map).map(async([k,a])=>{try{const r=await get(a);if(r.success)state[k]=r.data||[]}catch(e){console.warn(a,e.message)}}));
+ render();
+}catch(e){console.error(e)}}
+function sum(a,key="Amount"){return a.reduce((s,x)=>s+(Number(x[key])||0),0)}
+function render(){renderDashboard();renderTxns();renderAccounts();renderAssets();renderInvestments();renderCards();renderLoans();renderBills()}
+function accountBalance(a){const name=String(a.Account_Name||a.Bank_Name||"").toLowerCase();let b=Number(a.Opening_Balance)||0;
+ state.income.forEach(x=>{if(String(x.Account||"").toLowerCase()===name)b+=Number(x.Amount)||0});
+ state.expenses.forEach(x=>{if(String(x.Account||"").toLowerCase()===name)b-=Number(x.Amount)||0});
+ return b}
+function renderDashboard(){
+ const inc=sum(state.income),exp=sum(state.expenses);
+ const bank=sum(state.accounts.map(a=>({Amount:accountBalance(a)})));const cash=sum(state.accounts.filter(a=>String(a.Account_Type||"").toLowerCase()==="cash").map(a=>({Amount:accountBalance(a)})));
+ const inv=sum(state.pf,"Current_Balance")+sum(state.ppf,"Current_Balance")+sum(state.mf,"Current_Value")+sum(state.stocks,"Current_Value");
+ const assets=bank+inv+sum(state.assets,"Current_Value");const liab=sum(state.liabilities,"Outstanding_Amount")+sum(state.loans,"Outstanding")+sum(state.cards,"Outstanding");
+ $("assetsTotal").textContent=money(assets);$("liabTotal").textContent=money(liab);$("netWorth").textContent=money(assets-liab);$("cashFlow").textContent=money(inc-exp);$("bankTotal").textContent=money(bank-cash);$("cashTotal").textContent=money(cash);
+ $("assetPageTotal").textContent=money(assets);$("liabPageTotal").textContent=money(liab);$("netPageTotal").textContent=money(assets-liab);
+ const recent=[...state.income.map(x=>({...x,t:"Income"})),...state.expenses.map(x=>({...x,t:"Expense"}))].sort((a,b)=>new Date(b.Date)-new Date(a.Date)).slice(0,6);
+ $("recentActivity").innerHTML=recent.length?recent.map(x=>`<div class="activity-row"><div class="row-main"><strong>${esc(x.Category||x.Income_Source)}</strong><small>${dateText(x.Date)} · ${esc(x.Account)}</small></div><span class="amount ${x.t==="Income"?"pos":"neg"}">${x.t==="Income"?"+":"−"}${money(x.Amount)}</span></div>`).join(""):`<div class="empty">No transactions yet.</div>`;
+ $("accountSnapshot").innerHTML=state.accounts.length?state.accounts.slice(0,6).map(a=>`<div class="row"><div class="row-main"><strong>${esc(a.Account_Name||a.Bank_Name)}</strong><small>${esc(a.Account_Type||"Bank")}</small></div><span class="amount">${money(accountBalance(a))}</span></div>`).join(""):`<div class="empty">No bank accounts added.</div>`;
+ renderCharts();
+}
+let cashChart,expenseChart;
+function renderCharts(){
+ const months=[];const now=new Date();for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({key:`${d.getFullYear()}-${d.getMonth()}`,label:d.toLocaleString("en-IN",{month:"short"})})}
+ const income=months.map(m=>sum(state.income.filter(x=>{const d=new Date(x.Date);return `${d.getFullYear()}-${d.getMonth()}`===m.key})));
+ const expenses=months.map(m=>sum(state.expenses.filter(x=>{const d=new Date(x.Date);return `${d.getFullYear()}-${d.getMonth()}`===m.key})));
+ if(cashChart)cashChart.destroy();cashChart=new Chart($("cashChart"),{type:"line",data:{labels:months.map(m=>m.label),datasets:[{label:"Income",data:income,borderWidth:2,tension:.35},{label:"Expenses",data:expenses,borderWidth:2,tension:.35}]},options:{responsive:true,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true,ticks:{callback:v=>"₹"+Number(v).toLocaleString("en-IN")}}}}});
+ const cats={};state.expenses.forEach(x=>{cats[x.Category||"Other"]=(cats[x.Category||"Other"]||0)+(Number(x.Amount)||0)});const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+ if(expenseChart)expenseChart.destroy();expenseChart=new Chart($("expenseChart"),{type:"doughnut",data:{labels:entries.map(x=>x[0]),datasets:[{data:entries.map(x=>x[1])}]},options:{cutout:"68%",plugins:{legend:{display:false}}}});
+ $("expenseLegend").innerHTML=entries.length?entries.map(x=>`<div class="legend-item"><b>${esc(x[0])}</b><span>${money(x[1])}</span></div>`).join(""):`<div class="empty">No expense data.</div>`;
+}
+function renderTxns(){let q=($("txnSearch")?.value||"").toLowerCase(),t=$("txnType")?.value||"";let rows=[...state.income.map(x=>({...x,t:"Income",cat:x.Income_Source||x.Category})),...state.expenses.map(x=>({...x,t:"Expense",cat:x.Category}))].filter(x=>(!t||x.t===t)&&JSON.stringify(x).toLowerCase().includes(q)).sort((a,b)=>new Date(b.Date)-new Date(a.Date));$("txnTable").innerHTML=rows.length?rows.map(x=>`<tr><td>${dateText(x.Date)}</td><td><span class="badge ${x.t.toLowerCase()}">${x.t}</span></td><td>${esc(x.cat)}</td><td>${esc(x.Account)}</td><td class="${x.t==="Income"?"pos":"neg"}"><b>${x.t==="Income"?"+":"−"}${money(x.Amount)}</b></td><td>${esc(x.Description)}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">No records found.</td></tr>`}
+function renderAccounts(){$("accountCards").innerHTML=state.accounts.length?state.accounts.map(a=>`<article class="card"><div class="card-head"><div><h3>${esc(a.Account_Name||a.Bank_Name)}</h3><p>${esc(a.Bank_Name||"")} · ${esc(a.Account_Type||"")}</p></div><span class="amount">${money(accountBalance(a))}</span></div><div class="row-main"><small>Opening balance: ${money(a.Opening_Balance)}</small></div></article>`).join(""):`<div class="card empty">Add your first bank or cash account.</div>`}
+function renderAssets(){$("assetList").innerHTML=state.assets.length?state.assets.map(x=>`<div class="row"><div class="row-main"><strong>${esc(x.Asset_Name)}</strong><small>${esc(x.Asset_Type)}</small></div><span class="amount">${money(x.Current_Value)}</span></div>`).join(""):`<div class="empty">No assets recorded.</div>`;$("liabList").innerHTML=state.liabilities.length?state.liabilities.map(x=>`<div class="row"><div class="row-main"><strong>${esc(x.Liability_Name)}</strong><small>${esc(x.Liability_Type)}</small></div><span class="amount neg">${money(x.Outstanding_Amount)}</span></div>`).join(""):`<div class="empty">No liabilities recorded.</div>`}
+function renderInvestments(){$("pfValue").textContent=money(sum(state.pf,"Current_Balance"));$("ppfValue").textContent=money(sum(state.ppf,"Current_Balance"));$("mfValue").textContent=money(sum(state.mf,"Current_Value"));$("stockValue").textContent=money(sum(state.stocks,"Current_Value"))}
+function renderCards(){$("cardList").innerHTML=state.cards.length?state.cards.map(x=>`<article class="card"><div class="card-head"><div><h3>${esc(x.Card_Name)}</h3><p>${esc(x.Bank)} · •••• ${esc(x.Card_Last4)}</p></div><span class="amount neg">${money(x.Outstanding)}</span></div><div class="row"><span>Limit</span><b>${money(x.Credit_Limit)}</b></div><div class="row"><span>Due date</span><b>${esc(x.Payment_Due_Date)}</b></div></article>`).join(""):`<div class="card empty">No credit cards added.</div>`}
+function renderLoans(){$("loanList").innerHTML=state.loans.length?state.loans.map(x=>`<article class="card"><div class="card-head"><div><h3>${esc(x.Loan_Name)}</h3><p>${esc(x.Lender)}</p></div><span class="amount neg">${money(x.Outstanding)}</span></div><div class="row"><span>EMI</span><b>${money(x.EMI_Amount)}</b></div><div class="row"><span>Due day</span><b>${esc(x.EMI_Due_Day)}</b></div></article>`).join(""):`<div class="card empty">No loans added.</div>`}
+function renderBills(){$("billList").innerHTML=state.bills.length?state.bills.map(x=>`<article class="card"><div class="card-head"><div><h3>${esc(x.Bill_Name)}</h3><p>${esc(x.Provider)} · ${esc(x.Frequency)}</p></div><span class="amount">${money(x.Amount)}</span></div><div class="row"><span>Due date</span><b>${esc(x.Due_Date)}</b></div><div class="row"><span>Status</span><b>${esc(x.Status||"UPCOMING")}</b></div></article>`).join(""):`<div class="card empty">No bills added.</div>`}
+
+function nav(page){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$(page).classList.add("active");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===page));$("title").textContent=page==="dashboard"?"Dashboard":page.replace(/\b\w/g,x=>x.toUpperCase()).replace("Cards","Credit Cards");$("sidebar").classList.remove("open");window.scrollTo(0,0)}
+document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>nav(b.dataset.page));document.querySelectorAll("[data-page-link]").forEach(b=>b.onclick=()=>nav(b.dataset.pageLink));
+$("hamburger").onclick=()=>$("sidebar").classList.toggle("open");$("refresh").onclick=load;$("dateNow").textContent=new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+$("txnSearch").oninput=renderTxns;$("txnType").onchange=renderTxns;
+$("addBtn").onclick=()=>openForm("expense");document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dataset.form));$("close").onclick=()=>$("overlay").classList.add("hidden");$("overlay").onclick=e=>{if(e.target===$("overlay"))$("overlay").classList.add("hidden")};
+
+function openForm(type){
+ let html="";
+ const today=new Date().toISOString().slice(0,10);
+ if(type==="income")html=form("Add Income",[["date","Date","date",today],["income_source","Income Source","text","Salary / Business"],["category","Category","text","Salary"],["amount","Amount (₹)","number",""],["mode","Received Mode","select:Cash|Bank","Bank"],["account","Bank / Cash Account","text","SBI / Cash"],["description","Description","textarea",""]],"income");
+ else if(type==="expense")html=form("Add Expense",[["date","Date","date",today],["category","Category","text","Food / Electricity / EMI"],["amount","Amount (₹)","number",""],["mode","Expense Mode","select:Cash|Bank","Bank"],["account","Bank / Cash Account","text","SBI / Cash"],["description","Description","textarea",""]],"expense");
+ else if(type==="account")html=form("Add Bank / Cash Account",[["bank_name","Bank Name","text","SBI"],["account_name","Account Name","text","SBI Savings"],["account_type","Account Type","select:Bank|Cash","Bank"],["opening_balance","Opening Balance (₹)","number","0"],["account_number_last4","Last 4 digits (optional)","text","1234"]],"account");
+ else if(type==="asset")html=form("Add Asset",[["asset_name","Asset Name","text","Gold / Vehicle / Property"],["asset_type","Asset Type","text","Personal"],["purchase_date","Purchase Date","date",today],["purchase_value","Purchase Value (₹)","number",""],["current_value","Current Value (₹)","number",""],["notes","Notes","textarea",""]],"asset");
+ else if(type==="investment")html=form("Investment Entry",[["investment_type","Investment Type","select:Mutual Fund BUY|Mutual Fund SELL|Stock BUY|Stock SELL|PF Contribution|PF Withdrawal|PPF Contribution|PPF Withdrawal","Mutual Fund BUY"],["amount","Amount (₹)","number",""],["account","Bank Account (for bank movement)","text","SBI"],["investment_name","Investment / Fund Name","text",""],["date","Date","date",today]],"investment");
+ else if(type==="card")html=form("Add Credit Card",[["card_name","Card Name","text","HDFC Credit Card"],["bank","Bank","text","HDFC"],["card_last4","Card Last 4","text","1234"],["credit_limit","Credit Limit (₹)","number",""],["statement_date","Statement Date","text","25"],["payment_due_date","Payment Due Date","text","10"],["outstanding","Current Outstanding (₹)","number","0"]],"card");
+ else if(type==="loan")html=form("Add Loan",[["loan_name","Loan Name","text","Personal Loan"],["lender","Lender","text","Bank"],["principal","Principal (₹)","number",""],["emi_amount","EMI Amount (₹)","number",""],["interest_rate","Interest Rate %","number",""],["start_date","Start Date","date",today],["tenure_months","Tenure (months)","number",""],["emi_due_day","EMI Due Day","number","10"],["outstanding","Outstanding (₹)","number",""]],"loan");
+ else if(type==="bill")html=form("Add Bill",[["bill_name","Bill Name","text","Electricity"],["bill_type","Bill Type","text","Electricity"],["provider","Provider","text","WBSEDCL"],["amount","Amount (₹)","number",""],["due_date","Due Date","date",today],["frequency","Frequency","select:Monthly|Yearly|One-time","Monthly"],["payment_account","Payment Account","text","SBI"],["status","Status","select:UPCOMING|PAID|OVERDUE","UPCOMING"]],"bill");
+ $("modalContent").innerHTML=html;$("overlay").classList.remove("hidden");$("dataForm").onsubmit=e=>submitForm(e,type);
+}
+function form(title,fields,type){return `<span class="kicker">DATA ENTRY</span><h2>${title}</h2><form class="form" id="dataForm">${fields.map(f=>{let control=f[2].startsWith("select:")?`<select id="${f[0]}">${f[2].slice(7).split("|").map(o=>`<option ${o===f[3]?"selected":""}>${o}</option>`).join("")}</select>`:f[2]==="textarea"?`<textarea id="${f[0]}" rows="3" placeholder="${esc(f[3])}"></textarea>`:`<input id="${f[0]}" type="${f[2]}" value="${esc(f[3])}" placeholder="${esc(f[3])}" ${f[0]==="date"?"required":""}>`;return `<label>${f[1]}${control}</label>`}).join("")}<button class="primary full" type="submit">Save</button></form>`}
+async function submitForm(e,type){e.preventDefault();const vals={};e.target.querySelectorAll("input,select,textarea").forEach(x=>vals[x.id]=x.value);try{
+ let action=type==="income"?"addIncome":type==="expense"?"addExpense":type==="account"?"addBankAccount":type==="asset"?"addAsset":type==="investment"?"addInvestmentEntry":type==="card"?"addCreditCard":type==="loan"?"addLoan":"addBill";
+ vals.action=action; if(vals.amount)vals.amount=Number(vals.amount); if(vals.opening_balance)vals.opening_balance=Number(vals.opening_balance); if(vals.current_value)vals.current_value=Number(vals.current_value); if(vals.purchase_value)vals.purchase_value=Number(vals.purchase_value); if(vals.outstanding)vals.outstanding=Number(vals.outstanding);
+ if(type==="income"){vals.income_source=vals.income_source;vals.category=vals.category;vals.received_mode=vals.mode}
+ if(type==="expense")vals.expense_mode=vals.mode;
+ const r=await post(vals);if(!r.success)throw Error(r.error||"Save failed");$("overlay").classList.add("hidden");await load();alert("Saved successfully to Google Sheets.");
+ }catch(err){alert("Could not save: "+err.message)}}
+load();
